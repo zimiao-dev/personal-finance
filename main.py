@@ -153,6 +153,44 @@ def update_bill():
         print("修改失败")
 
 
+def delete_bill():
+
+    tr_id = int(
+        input("请输入要删除的账单ID：")
+    )
+
+
+    transaction = get_transaction_by_id(tr_id)
+
+
+    if not transaction:
+        print("账单不存在！")
+        return
+
+
+    print("当前账单:")
+    print(transaction)
+
+
+    confirm = input(
+        "是否确认删除(y/n): "
+    )
+
+
+    if confirm.lower() != "y":
+        print("取消删除")
+        return
+
+
+    result = delete_transaction(tr_id)
+
+
+    if result:
+        print("删除成功！")
+    else:
+        print("删除失败！")
+
+
 def main():
 
     while True:
@@ -172,7 +210,7 @@ def main():
             update_bill()
 
         elif choice == "4":
-            print("删除账单")
+            delete_bill()
 
         elif choice == "5":
             print("查询账单")
