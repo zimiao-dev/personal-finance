@@ -31,6 +31,59 @@ def show_menu():
 """)
 
 
+def add_bill() -> int:
+
+    amount = float(
+        input("请输入账单金额：")
+    )
+
+    transaction_type = input(
+        "请输入账单类型(income/expense)："
+    )
+
+    category = input(
+        "请输入账单分类："
+    )
+
+    transaction_date = input(
+        "请输入账单日期(yyyy-mm-dd)："
+    )
+
+    description = input(
+        "请输入账单描述："
+    )
+
+
+    transaction = Transaction(
+        id = None,
+        amount=amount,
+        type=transaction_type,
+        category=category,
+        transaction_date=transaction_date,
+        description=description
+    )
+
+
+    transaction_id = add_transaction(transaction)
+
+    return transaction_id
+
+
+def list_bill():
+
+    transactions = get_all_transactions()
+
+    if not transactions:
+        print("暂无账单记录")
+        return
+
+
+    print("全部历史账单如下：")
+
+    for t in transactions:
+        print(t)
+
+
 def main():
 
     while True:
@@ -40,10 +93,11 @@ def main():
         choice = input("请选择功能：")
 
         if choice == "1":
-            print("添加账单")
+            result = add_bill()
+            print(f"添加成功，账单ID：{result}")
 
         elif choice == "2":
-            print("查看账单")
+            list_bill()
 
         elif choice == "3":
             print("修改账单")
