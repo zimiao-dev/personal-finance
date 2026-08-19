@@ -4,7 +4,8 @@ from services import (
     update_transaction,
     get_transaction_by_id,
     delete_transaction,
-    query_transactions
+    query_transactions,
+    get_transaction_statistics
 )
 
 from models import Transaction
@@ -247,7 +248,70 @@ def query_bill():
     for t in transactions:
         print(t)
 
-    
+
+def statistics_bill():
+
+    print("""
+    ============================
+
+    a. 全部统计
+    b. 日期范围统计
+
+    ============================
+    """)
+
+
+    choice = input(
+        "请输入统计方式："
+    ).lower()
+
+
+    if choice == "a":
+
+        start_date = None
+
+        end_date = None
+
+
+    elif choice == "b":
+
+        start_date = input(
+            "请输入统计开始日期："
+        )
+
+        end_date = input(
+            "请输入统计结束日期："
+        )
+
+
+    else:
+
+        print("输入错误！")
+
+        return
+
+
+    result = get_transaction_statistics(
+        start_date,
+        end_date
+    )
+
+
+    print("统计结果：")
+
+    print(
+        f"总收入：{result.total_income}"
+    )
+
+    print(
+        f"总支出：{result.total_expense}"
+    )
+
+    print(
+        f"收支差额：{result.balance}"
+    )
+
+
 
 def main():
 
@@ -274,7 +338,7 @@ def main():
             query_bill()
 
         elif choice == "6":
-            print("收支统计")
+            statistics_bill()
 
         elif choice == "0":
             print("退出系统")
