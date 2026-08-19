@@ -84,6 +84,75 @@ def list_bill():
         print(t)
 
 
+def update_bill():
+
+    tr_id = int(
+        input("请输入需要修改的账单ID: ")
+    )
+
+
+    old_transaction = get_transaction_by_id(tr_id)
+
+
+    if not old_transaction:
+        print("账单记录不存在！")
+        return
+
+
+    print("当前账单:")
+    print(old_transaction)
+
+
+    confirm = input(
+        "是否确认修改(y/n): "
+    )
+
+
+    if confirm.lower() != "y":
+        print("取消修改")
+        return
+
+
+    amount = float(
+        input("请输入账单金额：")
+    )
+
+    transaction_type = input(
+        "请输入账单类型(income/expense)："
+    )
+
+    category = input(
+        "请输入账单分类："
+    )
+
+    transaction_date = input(
+        "请输入账单日期(yyyy-mm-dd)："
+    )
+
+    description = input(
+        "请输入账单描述："
+    )
+
+
+    transaction = Transaction(
+        id=tr_id,
+        amount=amount,
+        type=transaction_type,
+        category=category,
+        transaction_date=transaction_date,
+        description=description
+    )
+
+
+    result = update_transaction(transaction)
+
+
+    if result:
+        print("修改成功")
+    else:
+        print("修改失败")
+
+
 def main():
 
     while True:
@@ -100,7 +169,7 @@ def main():
             list_bill()
 
         elif choice == "3":
-            print("修改账单")
+            update_bill()
 
         elif choice == "4":
             print("删除账单")
