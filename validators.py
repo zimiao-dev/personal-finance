@@ -7,9 +7,9 @@ def validate_amount(amount: str) -> float:
     """
 
     try:
-        amount = float(amount)
+        amount = float(amount.strip())
 
-    except ValueError:
+    except (ValueError, TypeError, AttributeError):
         raise ValueError(
             "金额必须为数字"
         )
@@ -29,13 +29,15 @@ def validate_date(date_str: str) -> str:
     校验日期格式
     """
 
+    date_str = date_str.strip()
+
     try:
         datetime.strptime(
             date_str,
             "%Y-%m-%d"
         )
 
-    except ValueError:
+    except (ValueError, AttributeError):
         raise ValueError(
             "日期格式错误，应为 YYYY-MM-DD"
         )
@@ -50,7 +52,11 @@ def validate_type(transaction_type: str) -> str:
     校验交易类型
     """
 
-    transaction_type = transaction_type.lower()
+    transaction_type = (
+        transaction_type
+        .strip()
+        .lower()
+    )
 
 
     if transaction_type not in [
@@ -63,3 +69,56 @@ def validate_type(transaction_type: str) -> str:
 
 
     return transaction_type
+
+
+
+def validate_id(id_str: str) -> int:
+    """
+    校验ID
+    """
+
+    try:
+        transaction_id = int(id_str)
+
+    except (ValueError, TypeError):
+        raise ValueError(
+            "ID必须为整数"
+        )
+
+    if transaction_id <= 0:
+        raise ValueError(
+            "ID必须大于0"
+        )
+
+    return transaction_id
+
+
+
+def validate_category(category: str) -> str:
+    """
+    校验分类
+    """
+
+    category = category.strip()
+
+    if not category:
+        raise ValueError(
+            "分类不能为空"
+        )
+
+    return category
+
+
+
+def validate_date_range(
+    start_date,
+    end_date
+) -> None:
+    """
+    日期范围校验
+    """
+
+    if start_date > end_date:
+        raise ValueError(
+            "开始日期不能晚于结束日期"
+        )

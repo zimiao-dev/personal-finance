@@ -10,6 +10,14 @@ from services import (
 
 from models import Transaction
 
+from validators import (
+    validate_amount,
+    validate_date,
+    validate_type,
+    validate_id,
+    validate_category,
+    validate_date_range
+)
 
 def show_menu():
     """
@@ -35,20 +43,28 @@ def show_menu():
 
 def add_bill() -> int:
 
-    amount = float(
-        input("请输入账单金额：")
+    amount = validate_amount(
+        input(
+            "请输入账单金额："
+        )
     )
 
-    transaction_type = input(
-        "请输入账单类型(income/expense)："
+    transaction_type = validate_type(
+        input(
+            "请输入账单类型(income/expense)："
+        )
     )
 
-    category = input(
-        "请输入账单分类："
+    category = validate_category(
+        input(
+            "请输入账单分类："
+        )
     )
 
-    transaction_date = input(
-        "请输入账单日期(yyyy-mm-dd)："
+    transaction_date = validate_date(
+        input(
+            "请输入账单日期(yyyy-mm-dd)："
+        )
     )
 
     description = input(
@@ -88,8 +104,10 @@ def list_bill():
 
 def update_bill():
 
-    tr_id = int(
-        input("请输入需要修改的账单ID: ")
+    tr_id = validate_id(
+        input(
+            "请输入需要修改的账单ID: "
+        )
     )
 
 
@@ -110,25 +128,33 @@ def update_bill():
     )
 
 
-    if confirm.lower() != "y":
+    if confirm.strip().lower() != "y":
         print("取消修改")
         return
 
 
-    amount = float(
-        input("请输入账单金额：")
+    amount = validate_amount(
+        input(
+            "请输入账单金额："
+        )
     )
 
-    transaction_type = input(
-        "请输入账单类型(income/expense)："
+    transaction_type = validate_type(
+        input(
+            "请输入账单类型(income/expense)："
+        )
     )
 
-    category = input(
-        "请输入账单分类："
+    category = validate_category(
+        input(
+            "请输入账单分类："
+        )
     )
 
-    transaction_date = input(
-        "请输入账单日期(yyyy-mm-dd)："
+    transaction_date = validate_date(
+        input(
+            "请输入账单日期(yyyy-mm-dd)："
+        )
     )
 
     description = input(
@@ -157,8 +183,10 @@ def update_bill():
 
 def delete_bill():
 
-    tr_id = int(
-        input("请输入要删除的账单ID：")
+    tr_id = validate_id(
+        input(
+            "请输入要删除的账单ID："
+        )
     )
 
 
@@ -179,7 +207,7 @@ def delete_bill():
     )
 
 
-    if confirm.lower() != "y":
+    if confirm.strip().lower() != "y":
         print("取消删除")
         return
 
@@ -200,30 +228,69 @@ def query_bill():
     end_date = None
 
     print("""
+    ============================
+
     a. 按分类查询
     b. 按日期范围查询
     c. 分类+日期查询
+
+    ============================
     """)
 
-    choice = input("请选择查询方式：")
+    choice = input(
+        "请选择查询方式："
+    ).strip().lower()
 
 
     if choice == "a":
 
-        category = input("请输入类别：")
+        category = validate_category(
+            input(
+                "请输入类别："
+            )
+        )
 
 
     elif choice == "b":
 
-        start_date = input("请输入开始日期：")
-        end_date = input("请输入结束日期：")
+        start_date = validate_date(
+            input(
+                "请输入开始日期："
+            )
+        )
+        end_date = validate_date(
+            input(
+                "请输入结束日期："
+            )
+        )
+        validate_date_range(
+            start_date,
+            end_date
+        )
+        
 
 
     elif choice == "c":
 
-        category = input("请输入类别：")
-        start_date = input("请输入开始日期：")
-        end_date = input("请输入结束日期：")
+        category = validate_category(
+            input(
+                "请输入类别："
+            )
+        )
+        start_date = validate_date(
+            input(
+                "请输入开始日期："
+            )
+        )
+        end_date = validate_date(
+            input(
+                "请输入结束日期："
+            )
+        )
+        validate_date_range(
+            start_date,
+            end_date
+        )
 
 
     else:
@@ -263,7 +330,7 @@ def statistics_bill():
 
     choice = input(
         "请输入统计方式："
-    ).lower()
+    ).strip().lower()
 
 
     if choice == "a":
@@ -275,12 +342,21 @@ def statistics_bill():
 
     elif choice == "b":
 
-        start_date = input(
-            "请输入统计开始日期："
+        start_date = validate_date(
+            input(
+                "请输入统计开始日期："
+            )
         )
 
-        end_date = input(
-            "请输入统计结束日期："
+        end_date = validate_date(
+            input(
+                "请输入统计结束日期："
+            )
+        )
+
+        validate_date_range(
+            start_date,
+            end_date
         )
 
 
@@ -319,33 +395,44 @@ def main():
 
         show_menu()
 
-        choice = input("请选择功能：")
+        choice = input("请选择功能：").strip()
 
-        if choice == "1":
-            result = add_bill()
-            print(f"添加成功，账单ID：{result}")
 
-        elif choice == "2":
-            list_bill()
+        try:
 
-        elif choice == "3":
-            update_bill()
+            if choice == "1":
+                result = add_bill()
+                print(
+                    f"添加成功，账单ID：{result}"
+                )
 
-        elif choice == "4":
-            delete_bill()
+            elif choice == "2":
+                list_bill()
 
-        elif choice == "5":
-            query_bill()
+            elif choice == "3":
+                update_bill()
 
-        elif choice == "6":
-            statistics_bill()
+            elif choice == "4":
+                delete_bill()
 
-        elif choice == "0":
-            print("退出系统")
-            break
+            elif choice == "5":
+                query_bill()
 
-        else:
-            print("无效输入，请重新选择")
+            elif choice == "6":
+                statistics_bill()
+
+            elif choice == "0":
+                print("退出系统")
+                break
+
+            else:
+                print("无效输入")
+
+        except ValueError as e:
+
+            print(
+                f"输入错误：{e}"
+            )
 
 
 if __name__ == "__main__":
