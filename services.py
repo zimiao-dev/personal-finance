@@ -111,3 +111,61 @@ def update_transaction(transaction: Transaction) -> int:
         )
 
         return cursor.rowcount
+
+
+def get_transaction_by_id(transaction_id: int) -> Transaction | None:
+    """
+    根据 id 查找交易记录
+    """
+
+    sql = """
+    SELECT 
+        id,
+        amount,
+        type,
+        category,
+        transaction_date,
+        description
+    FROM transactions
+    WHERE id=?;
+    """
+
+    with get_connection() as conn:
+
+        cursor = conn.execute(
+            sql,
+            (transaction_id,)
+        )
+
+        row = cursor.fetchone()
+
+        if row is None:
+            return None
+
+        transaction = Transaction(
+            id=row[0],
+            amount=row[1],
+            type=row[2],
+            category=row[3],
+            transaction_date=row[4],
+            description=row[5]
+        )
+
+        return transaction
+
+def delete_transaction(transaction_id: int) -> int:
+    """
+    根据交易 id 删除交易记录
+    """
+    sql = """
+    DELETE FROM transactions
+    WHERE id=?;
+    """
+
+    with get_connection() as conn:
+        cursor = conn.execute(
+            sql,
+            (transaction_id,)
+        )
+
+        return cursor.rowcount
