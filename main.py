@@ -3,7 +3,8 @@ from services import (
     get_all_transactions,
     update_transaction,
     get_transaction_by_id,
-    delete_transaction
+    delete_transaction,
+    query_transactions
 )
 
 from models import Transaction
@@ -191,6 +192,63 @@ def delete_bill():
         print("删除失败！")
 
 
+def query_bill():
+
+    category = None
+    start_date = None
+    end_date = None
+
+    print("""
+    a. 按分类查询
+    b. 按日期范围查询
+    c. 分类+日期查询
+    """)
+
+    choice = input("请选择查询方式：")
+
+
+    if choice == "a":
+
+        category = input("请输入类别：")
+
+
+    elif choice == "b":
+
+        start_date = input("请输入开始日期：")
+        end_date = input("请输入结束日期：")
+
+
+    elif choice == "c":
+
+        category = input("请输入类别：")
+        start_date = input("请输入开始日期：")
+        end_date = input("请输入结束日期：")
+
+
+    else:
+        print("输入错误")
+        return
+
+
+    transactions = query_transactions(
+        category=category,
+        start_date=start_date,
+        end_date=end_date
+    )
+
+
+    if not transactions:
+        print("没有符合条件的账单记录！")
+        return
+
+
+    print("查询结果如下：")
+
+    for t in transactions:
+        print(t)
+
+    
+
 def main():
 
     while True:
@@ -213,7 +271,7 @@ def main():
             delete_bill()
 
         elif choice == "5":
-            print("查询账单")
+            query_bill()
 
         elif choice == "6":
             print("收支统计")
