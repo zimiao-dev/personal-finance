@@ -109,6 +109,66 @@ income
 
 expense
 
+### category
+
+类型：
+
+TEXT
+
+说明：
+
+表示交易所属分类。
+
+例如：
+
+food
+transport
+salary
+
+用于分类查询。
+
+### transaction_date
+
+类型：
+
+TEXT
+
+说明：
+
+保存交易发生日期。
+
+格式：
+
+YYYY-MM-DD
+
+用于日期范围查询和统计。
+
+### description
+
+类型：
+
+TEXT
+
+说明：
+
+保存用户补充说明。
+
+例如：
+
+朋友生日聚餐。
+
+### created_at
+
+类型：
+
+TEXT
+
+说明：
+
+记录数据创建时间。
+
+用于后续数据管理。
+
 ## 6. 数据约束设计
 
 
@@ -139,8 +199,7 @@ YYYY-MM-DD
 CREATE TABLE transactions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     amount REAL NOT NULL CHECK(amount > 0),
-    type TEXT NOT NULL 
-        CHECK(type IN ('income','expense')),
+    type TEXT NOT NULL CHECK(type IN ('income','expense')),
     category TEXT NOT NULL,
     transaction_date TEXT NOT NULL,
     description TEXT,
