@@ -48,4 +48,9 @@ def get_statistics(
             params
         )
 
-        return cursor.fetchone()
+        row = cursor.fetchone()
+
+        return {
+            "total_income": row[0] or 0,
+            "total_expense": row[1] or 0
+        }
