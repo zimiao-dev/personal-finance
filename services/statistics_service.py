@@ -1,26 +1,17 @@
 from models import TransactionStatistics
-
-from repositories.statistics_repository import (
-    get_statistics
-)
+from repositories.statistics_repository import get_statistics
 
 
 def get_transaction_statistics(
-        start_date=None,
-        end_date=None
+    start_date: str | None = None,
+    end_date: str | None = None
 ) -> TransactionStatistics:
+    """收支统计"""
 
-    """
-    收支统计
-    """
-    
-    statistics = get_statistics(
-        start_date,
-        end_date
-    )
-
+    statistics = get_statistics(start_date, end_date)
 
     return TransactionStatistics(
         total_income=statistics["total_income"],
-        total_expense=statistics["total_expense"]
+        total_expense=statistics["total_expense"],
+        transaction_count=statistics["transaction_count"]
     )

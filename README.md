@@ -2,101 +2,91 @@
 
 A command-line personal finance management system implemented with Python and SQLite.
 
-This project provides basic personal finance management features, including transaction creation, modification, deletion, query, and financial statistics.
-
-The project demonstrates Python backend development practices, including layered architecture, database operations, input validation, and service-oriented design.
-
+The project provides transaction creation, modification, deletion, filtering, and financial statistics. It demonstrates layered Python application design, SQLite data access, input validation, and service-oriented organization.
 
 ## Features
 
-- Add transaction
-  - Record income and expense information
-  - Store transaction amount, category, date and description
-
-- List transactions
-  - Display all transaction records
-
-- Update transaction
-  - Modify existing transaction information
-
-- Delete transaction
-  - Remove transaction records by ID
-
-- Query transactions
-  - Query by category
-  - Query by date range
-  - Query by category and date range
-
-- Statistics
-  - Calculate total income
-  - Calculate total expense
-  - Calculate balance
-
+- Add income and expense transactions
+- List all transactions
+- Update and delete transactions by ID
+- Query by category, date range, or both
+- Calculate total income, total expense, and balance
+- Validate amount, type, category, ID, and strict `YYYY-MM-DD` dates
 
 ## Tech Stack
 
-- Python
+- Python 3.10+
 - SQLite
-- Dataclass
-- CLI Application
-
+- Dataclasses
+- CLI application
 
 ## Project Structure
 
-```
-personal-finance
-│
-├── main.py # CLI entry point
-│
-├── services.py # Business logic layer
-│
-├── models.py # Data models
-│
-├── validators.py # Input validation
-│
-├── database.py # Database connection
-│
-└── data
+```text
+personal-finance/
+├── main.py
+├── database.py
+├── models.py
+├── validators.py
+├── repositories/
+│   ├── __init__.py
+│   ├── transaction_repository.py
+│   └── statistics_repository.py
+├── services/
+│   ├── __init__.py
+│   ├── transaction_service.py
+│   └── statistics_service.py
+├── docs/
+│   ├── requirements.md
+│   └── database-design.md
+└── data/
     └── finance.db
 ```
 
 ## Architecture
 
-The project follows a simple layered architecture:
-
-```
-User Input
-|
-v
-main.py
-(CLI Layer)
-|
-v
-validators.py
-(Input Validation)
-|
-v
-services.py
-(Business Logic)
-|
-v
-database.py
-(Database Access)
-|
-v
+```text
+User
+  ↓
+main.py                 CLI and output
+  ↓
+validators.py           Input validation
+  ↓
+services/               Application services
+  ↓
+repositories/           SQL and row mapping
+  ↓
+database.py             SQLite connection
+  ↓
 SQLite
 ```
 
 ## Database Design
 
-### transactions table
+### transactions
 
-| Column | Type | Description |
-|------|------|------|
-| id | INTEGER | Primary key |
-| amount | REAL | Transaction amount |
-| type | TEXT | income / expense |
-| category | TEXT | Transaction category |
-| transaction_date | TEXT | Transaction date |
-| description | TEXT | Additional notes |
+| Column | Type | Constraint | Description |
+|---|---|---|---|
+| id | INTEGER | PRIMARY KEY | Transaction ID |
+| amount | REAL | NOT NULL, > 0 | Transaction amount |
+| type | TEXT | income / expense | Transaction type |
+| category | TEXT | NOT NULL | Transaction category |
+| transaction_date | TEXT | NOT NULL | Date in YYYY-MM-DD format |
+| description | TEXT | NULL | Optional note |
+| created_at | TEXT | DEFAULT CURRENT_TIMESTAMP | Creation time |
 
+Input dates are validated by the application. SQLite stores them as text.
+
+## Run
+
+Initialize the database:
+
+```bash
+python database.py
+```
+
+Start the CLI:
+
+```bash
+python main.py
+```
