@@ -373,6 +373,10 @@ def statistics_bill():
     )
 
 
+    if result.transaction_count == 0:
+        print("暂无统计数据")
+        return
+
     print("统计结果：")
 
     print(
