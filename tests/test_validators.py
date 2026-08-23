@@ -4,6 +4,9 @@ from validators import (
     validate_amount,
     validate_date,
     validate_type,
+    validate_id,
+    validate_category,
+    validate_date_range,
 )
 
 
@@ -180,3 +183,170 @@ def test_validate_type_normalizes_valid_input(type_input, expected_type):
 def test_validate_type_rejects_invalid_input(type_input):
     with pytest.raises(ValueError, match="类型必须是income或expense"):
         validate_type(type_input)
+
+
+@pytest.mark.parametrize(
+    "id_input, expected_id",
+    [
+        ("10", 10),
+    ],
+    ids=[
+        "positive_integer",
+    ],
+)
+def test_validate_id_returns_valid_id_for_standard_input(
+    id_input, 
+    expected_id,
+):
+    result = validate_id(id_input)
+
+    assert result == expected_id
+    assert type(result) is int
+
+
+@pytest.mark.parametrize(
+    "id_input, expected_id",
+    [
+        ("  12  ", 12),
+        ("0012", 12),
+        ("+12", 12),
+    ],
+    ids=[
+        "integer_surrounding_whitespace",
+        "integer_with_leading_zeros",
+        "integer_with_a_plus_sign",
+    ],
+)
+def test_validate_id_normalizes_valid_input(
+    id_input, 
+    expected_id,
+):
+    result = validate_id(id_input)
+
+    assert result == expected_id
+
+
+@pytest.mark.parametrize(
+    "id_input",
+    [
+        "abc",
+        "1.5",
+        "1e3",
+        "",
+        "    ",
+        None
+    ],
+    ids=[
+        "non_numeric",
+        "decimal",
+        "scientific_notation",
+        "empty_string",
+        "whitespace_only",
+        "none"
+    ],
+)
+def test_validate_id_rejects_invalid_input(id_input):
+    with pytest.raises(
+        ValueError,
+        match="ID必须为整数",
+    ):
+        validate_id(id_input)
+
+
+@pytest.mark.parametrize(
+    "id_input",
+    [
+        "0",
+        "-12",
+    ],
+    ids=[
+        "zero",
+        "negative_integer",
+    ],
+)
+def test_validate_id_rejects_out_of_range_integer(id_input):
+    with pytest.raises(
+        ValueError,
+        match="ID必须大于0",
+    ):
+        validate_id(id_input)
+
+
+@pytest.mark.parametrize(
+    "category_input, expected_category",
+    [
+        ("food", "food"),
+    ],
+    ids=[
+        "valid_string",
+    ],
+)
+def test_validate_category_returns_valid_category_for_standard_input(category_input, expected_category):
+    result = validate_category(category_input)
+    assert result == expected_category
+
+
+@pytest.mark.parametrize(
+    "category_input, expected_category",
+    [
+        (" food ", "food"),
+        ("  FOOD ", "FOOD"),
+        ("  餐饮  ", "餐饮"),
+    ],
+    ids=[
+        "string_surrounding_whitespace",
+        "uppercase_with_whitespace",
+        "chinese_with_whitespace",
+    ],
+)
+def test_validate_category_normalizes_valid_category(category_input, expected_category):
+    result = validate_category(category_input)
+
+    assert result == expected_category
+
+
+@pytest.mark.parametrize(
+    "category_input",
+    [
+        "",
+        "    ",
+        None,
+    ],
+    ids=[
+        "empty_string",
+        "whitespace_only",
+        "none",
+    ],
+)
+def test_validate_category_rejects_invalid_input(category_input):
+    with pytest.raises(
+        ValueError,
+        match="分类不能为空",
+    ):
+        validate_category(category_input)
+
+
+@pytest.mark.parametrize(
+    "start_date_input, end_date_input",
+    [
+        ("2026-08-01", "2026-08-31"),
+        ("2026-08-23", "2026-08-23"),
+        ("2026-12-31", "2027-01-01"),
+    ],
+    ids=[
+        "same_month_forward",
+        "same_date",
+        "cross_year_forward",
+    ],
+)
+def test_validate_date_range_accepts_valid_range(start_date_input, end_date_input):
+    result = validate_date_range(start_date_input, end_date_input)
+    assert result is None
+
+
+def test_validate_date_range_rejects_reversed_range():
+    with pytest.raises(
+        ValueError,
+        match="开始日期不能晚于结束日期",
+    ):
+        validate_date_range("2026-08-31", "2026-08-01")
