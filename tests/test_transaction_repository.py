@@ -407,7 +407,7 @@ def test_query_transactions_returns_all_transactions_without_filters(
         (None, "2026-08-31"),
     ],
     ids=[
-        "start_date_noly",
+        "start_date_only",
         "end_date_only",
     ],
 )

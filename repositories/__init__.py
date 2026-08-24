@@ -4,5 +4,9 @@ from .transaction_repository import (
     find_transaction_by_id,
     update_transaction,
     delete_transaction,
-    query_transactions
+    query_transactions,
+)
+
+from .statistics_repository import(
+    get_statistics,
 )
