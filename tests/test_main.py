@@ -315,12 +315,11 @@ def test_query_bill_displays_empty_message_when_no_transactions_match(
 
     captured = capsys.readouterr()
 
-    # Assert: Validator 收到原始分类
+    # Assert
     assert validator_calls == [
         raw_category,
     ]
 
-    # Assert：Service 收到规范化分类，日期条件为空
     assert service_calls == [
         {
             "category": validated_category,
@@ -329,9 +328,7 @@ def test_query_bill_displays_empty_message_when_no_transactions_match(
         }
     ]
 
-    # Assert：输出准确的空结果提示
     assert "没有符合条件的账单记录！" in captured.out
-
     assert "查询结果如下：" not in captured.out
 
 
@@ -398,20 +395,17 @@ def test_delete_bill_displays_not_found_message_for_missing_transaction(
 
     captured = capsys.readouterr()
 
-    # Assert: 原始 ID 进入 Validator
+    # Assert
     assert validator_calls == [
         raw_id,
     ]
 
-    # Assert：规范化 ID 进入查询 Service
     assert query_calls == [
         validated_id,
     ]
 
-    # Assert：未找到后不能执行删除
     assert delete_calls == []
 
-    # Assert：输出准确提示
     assert "账单不存在！" in captured.out
 
 
@@ -427,7 +421,7 @@ def test_update_bill_cancels_when_not_confirmed(
     existing_transaction = Transaction(
         id=validated_id,
         amount=12.0,
-        type="income",
+        type="expense",
         category="food",
         transaction_date="2026-08-27",
         description="早餐",
@@ -489,7 +483,7 @@ def test_update_bill_cancels_when_not_confirmed(
 
     captured = capsys.readouterr()
 
-    # Assert: ID 数据流正确
+    # Assert
     assert validator_calls == [
         raw_id,
     ]
@@ -498,10 +492,215 @@ def test_update_bill_cancels_when_not_confirmed(
         validated_id,
     ]
 
-    # Assert：取消后没有调用更新 Service
     assert update_calls == []
 
-    # Assert：输出原账单和取消提示
     assert "当前账单:" in captured.out
-
     assert "取消修改" in captured.out
+
+
+def test_list_bill_displays_returned_transactions(
+    monkeypatch,
+    capsys,
+):
+    # Arrange
+    first_transaction = Transaction(
+        id=315,
+        amount=12.0,
+        type="expense",
+        category="food",
+        transaction_date="2026-08-26",
+        description="午餐",
+    )
+
+    second_transaction = Transaction(
+        id=515,
+        amount=4.0,
+        type="income",
+        category="transport",
+        transaction_date="2026-08-27",
+        description="交通补贴",
+    )
+
+    returned_transactions = [
+        first_transaction,
+        second_transaction,
+    ]
+
+    service_calls = []
+
+    def fake_get_all_transactions():
+        service_calls.append(True)
+        return returned_transactions
+
+    monkeypatch.setattr(
+        main,
+        "get_all_transactions",
+        fake_get_all_transactions,
+    )
+
+    # Act
+    main.list_bill()
+
+    captured = capsys.readouterr()
+
+    # Assert
+    assert service_calls == [True]
+
+    assert "全部历史账单如下：" in captured.out
+    assert str(first_transaction) in captured.out
+    assert str(second_transaction) in captured.out
+    assert "暂无账单记录" not in captured.out
+
+
+def test_statistics_bill_displays_statistics_when_transactions_exist(
+    monkeypatch,
+    capsys,
+):
+    # Arrange
+    statistics_mode = "  A"
+
+    input_values = iter([
+        statistics_mode,
+    ])
+
+    def fake_input(prompt=""):
+        return next(input_values)
+
+    monkeypatch.setattr(
+        "builtins.input",
+        fake_input,
+    )
+
+    statistics_result = TransactionStatistics(
+        total_income=515.15,
+        total_expense=15.0,
+        transaction_count=20,
+    )
+
+    service_calls = []
+
+    def fake_get_transaction_statistics(
+        received_start_date,
+        received_end_date,
+    ):
+        service_calls.append(
+            (received_start_date, received_end_date)
+        )
+        return statistics_result
+
+    monkeypatch.setattr(
+        main,
+        "get_transaction_statistics",
+        fake_get_transaction_statistics,
+    )
+
+    # Act
+    main.statistics_bill()
+
+    captured = capsys.readouterr()
+
+    # Assert
+    assert (
+        f"总收入：{statistics_result.total_income}"
+        in captured.out
+    )
+
+    assert (
+        f"总支出：{statistics_result.total_expense}"
+        in captured.out
+    )
+
+    assert (
+        f"收支差额：{statistics_result.balance}"
+        in captured.out
+    )
+
+    assert "统计结果：" in captured.out
+    assert "暂无统计数据" not in captured.out
+
+
+def test_delete_bill_cancels_when_not_confirmed(
+    monkeypatch,
+    capsys,
+):
+    # Arrange
+    raw_id = "  515"
+    validated_id = 515
+    cancel_choice = " N "
+
+    existing_transaction = Transaction(
+        id=validated_id,
+        amount=15.0,
+        type="expense",
+        category="food",
+        transaction_date="2026-08-27",
+        description="早餐",
+    )
+
+    input_values = iter([
+        raw_id,
+        cancel_choice,
+    ])
+
+    def fake_input(prompt=""):
+        return next(input_values)
+
+    monkeypatch.setattr(
+        "builtins.input",
+        fake_input,
+    )
+
+    validator_calls = []
+
+    def fake_validate_id(received_id):
+        validator_calls.append(received_id)
+        return validated_id
+
+    monkeypatch.setattr(
+        main,
+        "validate_id",
+        fake_validate_id,
+    )
+
+    query_calls = []
+
+    def fake_get_transaction_by_id(received_id):
+        query_calls.append(received_id)
+        return existing_transaction
+
+    monkeypatch.setattr(
+        main,
+        "get_transaction_by_id",
+        fake_get_transaction_by_id,
+    )
+
+    delete_calls = []
+
+    def fake_delete_transaction(received_id):
+        delete_calls.append(received_id)
+        return 1
+
+    monkeypatch.setattr(
+        main,
+        "delete_transaction",
+        fake_delete_transaction,
+    )
+
+    # Act
+    main.delete_bill()
+
+    captured = capsys.readouterr()
+
+    # Assert
+    assert validator_calls == [
+        raw_id,
+    ]
+
+    assert query_calls == [
+        validated_id,
+    ]
+
+    assert delete_calls == []
+
+    assert "当前账单:" in captured.out
+    assert "取消删除" in captured.out
