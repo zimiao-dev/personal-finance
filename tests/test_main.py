@@ -1,3 +1,5 @@
+import pytest
+
 from models import Transaction, TransactionStatistics
 import main
 
@@ -1431,3 +1433,276 @@ def test_delete_bill_displays_failure_when_delete_affects_no_rows(
     assert "删除失败！" in captured.out
     assert "删除成功！" not in captured.out
     assert "取消删除" not in captured.out
+
+
+def test_update_bill_displays_failure_when_update_affects_no_rows(
+    monkeypatch,
+    capsys,
+):
+    # Arrange
+    raw_id = " 515 "
+    validated_id = 515
+    confirm_choice = "  Y "
+
+    existing_transaction = Transaction(
+        id=validated_id,
+        amount=12.0,
+        type="income",
+        category="transport",
+        transaction_date="2026-08-26",
+        description="地铁",
+    )
+
+    raw_amount = "  15.0"
+    raw_type = " Expense "
+    raw_category = "  food"
+    raw_date = "2026-08-27 "
+    raw_description = "午餐"
+
+    validated_amount = 15.0
+    validated_type = "expense"
+    validated_category = "food"
+    validated_date = "2026-08-27"
+
+    input_values = iter([
+        raw_id,
+        confirm_choice,
+        raw_amount,
+        raw_type,
+        raw_category,
+        raw_date,
+        raw_description,
+    ])
+
+    def fake_input(prompt=""):
+        return next(input_values)
+
+    monkeypatch.setattr(
+        "builtins.input",
+        fake_input,
+    )
+
+    validator_calls = []
+
+    def fake_validate_id(received_value):
+        validator_calls.append(("id", received_value))
+        return validated_id
+
+    def fake_validate_amount(received_value):
+        validator_calls.append(("amount", received_value))
+        return validated_amount
+
+    def fake_validate_type(received_value):
+        validator_calls.append(("type", received_value))
+        return validated_type
+
+    def fake_validate_category(received_value):
+        validator_calls.append(("category", received_value))
+        return validated_category
+
+    def fake_validate_date(received_value):
+        validator_calls.append(("date", received_value))
+        return validated_date
+
+    monkeypatch.setattr(main, "validate_id", fake_validate_id)
+    monkeypatch.setattr(main, "validate_amount", fake_validate_amount)
+    monkeypatch.setattr(main, "validate_type", fake_validate_type)
+    monkeypatch.setattr(main, "validate_category", fake_validate_category)
+    monkeypatch.setattr(main, "validate_date", fake_validate_date)
+
+    query_calls = []
+
+    def fake_get_transaction_by_id(received_id):
+        query_calls.append(received_id)
+        return existing_transaction
+
+    monkeypatch.setattr(
+        main,
+        "get_transaction_by_id",
+        fake_get_transaction_by_id,
+    )
+
+    update_calls = []
+
+    def fake_update_transaction(received_transaction):
+        update_calls.append(received_transaction)
+
+        return 0
+
+    monkeypatch.setattr(
+        main,
+        "update_transaction",
+        fake_update_transaction,
+    )
+
+    # Act
+    main.update_bill()
+
+    captured = capsys.readouterr()
+
+    # Assert
+    assert validator_calls == [
+        ("id", raw_id),
+        ("amount", raw_amount),
+        ("type", raw_type),
+        ("category", raw_category),
+        ("date", raw_date),
+    ]
+
+    assert query_calls == [
+        validated_id,
+    ]
+
+    assert len(update_calls) == 1
+    updated_transaction = update_calls[0]
+
+    assert isinstance(updated_transaction, Transaction)
+    assert updated_transaction.id == validated_id
+
+    assert "当前账单:" in captured.out
+    assert str(existing_transaction) in captured.out
+    assert "修改失败" in captured.out
+
+    assert "修改成功" not in captured.out
+    assert "取消修改" not in captured.out
+
+
+def test_main_displays_value_error_and_continues_to_exit(
+    monkeypatch,
+    capsys,
+):
+    # Arrange
+    error_message = "test-only add bill validation failure"
+
+    input_values = iter([
+        "1",
+        "0",
+    ])
+
+    def fake_input(prompt=""):
+        return next(input_values)
+
+    monkeypatch.setattr(
+        "builtins.input",
+        fake_input,
+    )
+
+    menu_calls = []
+
+    def fake_show_menu():
+        menu_calls.append(True)
+
+    monkeypatch.setattr(
+        main,
+        "show_menu",
+        fake_show_menu,
+    )
+
+    add_calls = []
+
+    def fake_add_bill():
+        add_calls.append(True)
+        raise ValueError(error_message)
+
+    monkeypatch.setattr(
+        main,
+        "add_bill",
+        fake_add_bill,
+    )
+
+    # Act
+    main.main()
+
+    captured = capsys.readouterr()
+
+    # Assert
+    assert add_calls == [
+        True,
+    ]
+
+    assert menu_calls == [
+        True,
+        True,
+    ]
+
+    assert f"输入错误：{error_message}" in captured.out
+
+    assert "退出系统" in captured.out
+
+
+@pytest.mark.parametrize(
+    ("choice", "expected_action"),
+    [
+        ("1", "add_bill"),
+        ("2", "list_bill"),
+        ("3", "update_bill"),
+        ("4", "delete_bill"),
+        ("5", "query_bill"),
+        ("6", "statistics_bill"),
+    ],
+)
+def test_main_dispatches_selected_menu_action(
+    monkeypatch,
+    choice,
+    expected_action,
+):
+    # Arrange
+    input_values = iter([
+        choice,
+        "0",
+    ])
+
+    def fake_input(prompt=""):
+        return next(input_values)
+
+    monkeypatch.setattr(
+        "builtins.input",
+        fake_input,
+    )
+
+    def fake_show_menu():
+        pass
+
+    monkeypatch.setattr(
+        main,
+        "show_menu",
+        fake_show_menu,
+    )
+
+    action_calls = []
+    inserted_id = 515
+
+    def make_fake_action(action_name):
+        def fake_action():
+            action_calls.append(action_name)
+
+            if action_name == "add_bill":
+                return inserted_id
+
+            return None
+
+        return fake_action
+
+    action_names = [
+        "add_bill",
+        "list_bill",
+        "update_bill",
+        "delete_bill",
+        "query_bill",
+        "statistics_bill",
+    ]
+
+    for action_name in action_names:
+        monkeypatch.setattr(
+            main,
+            action_name,
+            make_fake_action(action_name),
+        )
+
+    # Act
+    main.main()
+
+    # Assert
+    assert action_calls == [
+        expected_action,
+    ]
