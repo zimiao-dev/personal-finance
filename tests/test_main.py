@@ -1706,3 +1706,405 @@ def test_main_dispatches_selected_menu_action(
     assert action_calls == [
         expected_action,
     ]
+
+
+def test_main_displays_message_for_invalid_choice_and_continues_to_exit(
+    monkeypatch,
+    capsys,
+):
+    # Arrange
+    invalid_choice = " 9 "
+
+    input_values = iter([
+        invalid_choice,
+        "0",
+    ])
+
+    def fake_input(prompt=""):
+        return next(input_values)
+
+    monkeypatch.setattr(
+        "builtins.input",
+        fake_input,
+    )
+
+    menu_calls = []
+
+    def fake_show_menu():
+        menu_calls.append(True)
+
+    monkeypatch.setattr(
+        main,
+        "show_menu",
+        fake_show_menu,
+    )
+
+    action_calls = []
+
+    def make_fake_action(action_name):
+        def fake_action():
+            action_calls.append(action_name)
+            return None
+
+        return fake_action
+
+    action_names = [
+        "add_bill",
+        "list_bill",
+        "update_bill",
+        "delete_bill",
+        "query_bill",
+        "statistics_bill",
+    ]
+
+    for action_name in action_names:
+        monkeypatch.setattr(
+            main,
+            action_name,
+            make_fake_action(action_name),
+        )
+
+    # Act
+    main.main()
+
+    captured = capsys.readouterr()
+
+    assert action_calls == []
+
+    # Assert
+    assert menu_calls == [
+        True,
+        True,
+    ]
+
+    assert "无效输入" in captured.out
+    assert "退出系统" in captured.out
+
+
+def test_main_exits_for_zero_choice_without_dispatching_action(
+    monkeypatch,
+    capsys,
+):
+    # Arrange
+    input_values = iter([
+        " 0 ",
+    ])
+
+    def fake_input(prompt=""):
+        return next(input_values)
+
+    monkeypatch.setattr(
+        "builtins.input",
+        fake_input,
+    )
+
+    menu_calls = []
+
+    def fake_show_menu():
+        menu_calls.append(True)
+
+    monkeypatch.setattr(
+        main,
+        "show_menu",
+        fake_show_menu,
+    )
+
+    action_calls = []
+
+    def make_fake_action(action_name):
+        def fake_action():
+            action_calls.append(action_name)
+            return None
+
+        return fake_action
+
+    action_names = [
+        "add_bill",
+        "list_bill",
+        "update_bill",
+        "delete_bill",
+        "query_bill",
+        "statistics_bill",
+    ]
+
+    for action_name in action_names:
+        monkeypatch.setattr(
+            main,
+            action_name,
+            make_fake_action(action_name),
+        )
+
+    # Act
+    main.main()
+
+    captured = capsys.readouterr()
+
+    # Assert
+    assert menu_calls == [
+        True,
+    ]
+
+    assert action_calls == []
+
+    assert "退出系统" in captured.out
+
+
+def test_main_displays_inserted_id_after_add_bill(
+    monkeypatch,
+    capsys,
+):
+    # Arrange
+    inserted_id = 515
+
+    input_values = iter([
+        "1",
+        "0",
+    ])
+
+    def fake_input(prompt=""):
+        return next(input_values)
+
+    monkeypatch.setattr(
+        "builtins.input",
+        fake_input,
+    )
+
+    def fake_show_menu():
+        pass
+
+    monkeypatch.setattr(
+        main,
+        "show_menu",
+        fake_show_menu,
+    )
+
+    add_calls = []
+
+    def fake_add_bill():
+        add_calls.append(True)
+        return inserted_id
+
+    monkeypatch.setattr(
+        main,
+        "add_bill",
+        fake_add_bill,
+    )
+
+    unexpected_calls = []
+
+    def fake_unexpected_action():
+        unexpected_calls.append(True)
+
+    for action_name in [
+        "list_bill",
+        "update_bill",
+        "delete_bill",
+        "query_bill",
+        "statistics_bill",
+    ]:
+        monkeypatch.setattr(
+            main,
+            action_name,
+            fake_unexpected_action,
+        )
+
+    # Act
+    main.main()
+
+    captured = capsys.readouterr()
+
+    # Assert
+    assert add_calls == [
+        True,
+    ]
+
+    assert unexpected_calls == []
+
+    assert (
+        f"添加成功，账单ID：{inserted_id}"
+        in captured.out
+    )
+
+    assert "退出系统" in captured.out
+
+
+def test_query_bill_displays_error_for_invalid_query_mode(
+    monkeypatch,
+    capsys,
+):
+    # Arrange
+    invalid_mode = " X "
+
+    input_values = iter([
+        invalid_mode,
+    ])
+
+    def fake_input(prompt=""):
+        return next(input_values)
+
+    monkeypatch.setattr(
+        "builtins.input",
+        fake_input,
+    )
+
+    unexpected_calls = []
+
+    def fake_validate_category(received_category):
+        unexpected_calls.append(
+            ("validate_category", received_category)
+        )
+        return None
+
+    def fake_validate_date(received_date):
+        unexpected_calls.append(
+            ("validate_date", received_date)
+        )
+        return None
+
+    def fake_validate_date_range(
+        received_start_date,
+        received_end_date,
+    ):
+        unexpected_calls.append(
+            (
+                "validate_date_range",
+                received_start_date,
+                received_end_date,
+            )
+        )
+
+    def fake_query_transactions(
+        *,
+        category,
+        start_date,
+        end_date,
+    ):
+        unexpected_calls.append(
+            (
+                "query_transactions",
+                category,
+                start_date,
+                end_date,
+            )
+        )
+        return ...
+
+    monkeypatch.setattr(
+        main,
+        "validate_category",
+        fake_validate_category,
+    )
+    monkeypatch.setattr(
+        main,
+        "validate_date",
+        fake_validate_date,
+    )
+    monkeypatch.setattr(
+        main,
+        "validate_date_range",
+        fake_validate_date_range,
+    )
+    monkeypatch.setattr(
+        main,
+        "query_transactions",
+        fake_query_transactions,
+    )
+
+    # Act
+    main.query_bill()
+
+    captured = capsys.readouterr()
+
+    # Assert
+    assert unexpected_calls == []
+
+    assert "输入错误" in captured.out
+
+    assert "查询结果如下：" not in captured.out
+    assert "没有符合条件的账单记录！" not in captured.out
+
+
+def test_statistics_bill_displays_error_for_invalid_statistics_mode(
+    monkeypatch,
+    capsys,
+):
+    # Arrange
+    invalid_mode = " X "
+
+    input_values = iter([
+        invalid_mode,
+    ])
+
+    def fake_input(prompt=""):
+        return next(input_values)
+
+    monkeypatch.setattr(
+        "builtins.input",
+        fake_input,
+    )
+
+    unexpected_calls = []
+
+    def fake_validate_date(received_date):
+        unexpected_calls.append(
+            ("validate_date", received_date)
+        )
+        return None
+
+    def fake_validate_date_range(
+        received_start_date,
+        received_end_date,
+    ):
+        unexpected_calls.append(
+            (
+                "validate_date_range",
+                received_start_date,
+                received_end_date,
+            )
+        )
+
+    def fake_get_transaction_statistics(
+        received_start_date,
+        received_end_date,
+    ):
+        unexpected_calls.append(
+            (
+                "get_transaction_statistics",
+                received_start_date,
+                received_end_date,
+            )
+        )
+        return TransactionStatistics(
+            total_income=0,
+            total_expense=0,
+            transaction_count=0,
+        )
+
+    monkeypatch.setattr(
+        main,
+        "validate_date",
+        fake_validate_date,
+    )
+    monkeypatch.setattr(
+        main,
+        "validate_date_range",
+        fake_validate_date_range,
+    )
+    monkeypatch.setattr(
+        main,
+        "get_transaction_statistics",
+        fake_get_transaction_statistics,
+    )
+
+    # Act
+    main.statistics_bill()
+
+    captured = capsys.readouterr()
+
+    # Assert
+    assert unexpected_calls == []
+
+    assert "输入错误！" in captured.out
+
+    assert "统计结果：" not in captured.out
+    assert "暂无统计数据" not in captured.out
