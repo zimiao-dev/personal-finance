@@ -1056,3 +1056,378 @@ def test_delete_bill_displays_success_after_confirmed_delete(
 
     assert "删除成功！" in captured.out
     assert "取消删除" not in captured.out
+
+
+def test_statistics_bill_passes_validated_date_range_to_service(
+    monkeypatch,
+):
+    # Arrange
+    statistics_mode = "  B "
+    raw_start_date = "  2026-08-01"
+    raw_end_date = "2026-08-27  "
+
+    validated_start_date = "2026-08-01"
+    validated_end_date = "2026-08-27"
+
+    validated_date_values = iter(
+        [
+            validated_start_date,
+            validated_end_date,
+        ]
+    )
+
+    input_values = iter(
+        [
+            statistics_mode,
+            raw_start_date,
+            raw_end_date,
+        ]
+    )
+
+    def fake_input(prompt=""):
+        return next(input_values)
+
+    monkeypatch.setattr(
+        "builtins.input",
+        fake_input,
+    )
+
+    date_validator_calls = []
+
+    def fake_validate_date(received_date):
+        date_validator_calls.append(received_date)
+        return next(validated_date_values)
+
+    monkeypatch.setattr(
+        main,
+        "validate_date",
+        fake_validate_date,
+    )
+
+    date_range_calls = []
+
+    call_order = []
+
+    def fake_validate_date_range(
+        received_start_date,
+        received_end_date,
+    ):
+        date_range_calls.append(
+            (
+                received_start_date,
+                received_end_date,
+            )
+        )
+
+        call_order.append("validate_date_range")
+
+        return None
+
+    monkeypatch.setattr(
+        main,
+        "validate_date_range",
+        fake_validate_date_range,
+    )
+
+    service_calls = []
+
+    statistics_result = TransactionStatistics(
+        total_income=515.15,
+        total_expense=15.0,
+        transaction_count=15,
+    )
+
+    def fake_get_transaction_statistics(
+        received_start_date,
+        received_end_date,
+    ):
+        service_calls.append(
+            (received_start_date, received_end_date)
+        )
+        call_order.append("get_transaction_statistics")
+        return statistics_result
+
+    monkeypatch.setattr(
+        main,
+        "get_transaction_statistics",
+        fake_get_transaction_statistics,
+    )
+
+    # Act
+    main.statistics_bill()
+
+    # Assert
+    assert date_validator_calls == [
+        raw_start_date,
+        raw_end_date,
+    ]
+
+    assert date_range_calls == [
+        (
+            validated_start_date,
+            validated_end_date,
+        ),
+    ]
+
+    assert service_calls == [
+        (
+            validated_start_date,
+            validated_end_date,
+        ),
+    ]
+
+    assert call_order == [
+        "validate_date_range",
+        "get_transaction_statistics",
+    ]
+
+
+def test_update_bill_displays_success_after_confirmed_update(
+    monkeypatch,
+    capsys,
+):
+    # Arrange
+    raw_id = "  515 "
+    validated_id = 515
+    confirm_choice = "  Y "
+
+    raw_amount = "15.0 "
+    raw_type = "  Expense"
+    raw_category = "food "
+    raw_date = "2026-08-26 "
+    raw_description = " 晚餐"
+
+    validated_amount = 15.0
+    validated_type = "expense"
+    validated_category = "food"
+    validated_date = "2026-08-26"
+
+    existing_transaction = Transaction(
+        id=validated_id,
+        amount=10.0,
+        type="income",
+        category="transport",
+        transaction_date="2026-08-28",
+        description="地铁",
+    )
+
+    input_values = iter([
+        raw_id,
+        confirm_choice,
+        raw_amount,
+        raw_type,
+        raw_category,
+        raw_date,
+        raw_description,
+    ])
+
+    def fake_input(prompt=""):
+        return next(input_values)
+
+    monkeypatch.setattr(
+        "builtins.input",
+        fake_input,
+    )
+
+    validator_calls = []
+
+    def fake_validate_id(received_value):
+        validator_calls.append(("id", received_value))
+        return validated_id
+
+    def fake_validate_amount(received_value):
+        validator_calls.append(("amount", received_value))
+        return validated_amount
+
+    def fake_validate_type(received_value):
+        validator_calls.append(("type", received_value))
+        return validated_type
+
+    def fake_validate_category(received_value):
+        validator_calls.append(("category", received_value))
+        return validated_category
+
+    def fake_validate_date(received_value):
+        validator_calls.append(("date", received_value))
+        return validated_date
+
+    monkeypatch.setattr(
+        main,
+        "validate_id",
+        fake_validate_id,
+    )
+    monkeypatch.setattr(
+        main,
+        "validate_amount",
+        fake_validate_amount,
+    )
+    monkeypatch.setattr(
+        main,
+        "validate_type",
+        fake_validate_type,
+    )
+    monkeypatch.setattr(
+        main,
+        "validate_category",
+        fake_validate_category,
+    )
+    monkeypatch.setattr(
+        main,
+        "validate_date",
+        fake_validate_date,
+    )
+
+    query_calls = []
+
+    def fake_get_transaction_by_id(received_id):
+        query_calls.append(received_id)
+        return existing_transaction
+
+    monkeypatch.setattr(
+        main,
+        "get_transaction_by_id",
+        fake_get_transaction_by_id,
+    )
+
+    update_calls = []
+
+    def fake_update_transaction(received_transaction):
+        update_calls.append(received_transaction)
+
+        return 1
+
+    monkeypatch.setattr(
+        main,
+        "update_transaction",
+        fake_update_transaction,
+    )
+
+    # Act
+    main.update_bill()
+
+    captured = capsys.readouterr()
+
+    # Assert
+    assert validator_calls == [
+        ("id", raw_id),
+        ("amount", raw_amount),
+        ("type", raw_type),
+        ("category", raw_category),
+        ("date", raw_date),
+    ]
+
+    assert query_calls == [
+        validated_id,
+    ]
+
+    assert len(update_calls) == 1
+    updated_transaction = update_calls[0]
+
+    assert isinstance(updated_transaction, Transaction)
+    assert updated_transaction.id == validated_id
+    assert updated_transaction.amount == validated_amount
+    assert updated_transaction.type == validated_type
+    assert updated_transaction.category == validated_category
+    assert updated_transaction.transaction_date == validated_date
+    assert updated_transaction.description == raw_description
+
+    assert updated_transaction is not existing_transaction
+
+    assert "当前账单:" in captured.out
+    assert str(existing_transaction) in captured.out
+    assert "修改成功" in captured.out
+    assert "取消修改" not in captured.out
+
+
+def test_delete_bill_displays_failure_when_delete_affects_no_rows(
+    monkeypatch,
+    capsys,
+):
+    # Arrange
+    raw_id = "515"
+    validated_id = 515
+    confirm_choice = "  Y "
+
+    existing_transaction = Transaction(
+        id=validated_id,
+        amount=15.0,
+        type="expense",
+        category="food",
+        transaction_date="2026-08-26",
+        description="午餐",
+    )
+
+    input_values = iter([
+        raw_id,
+        confirm_choice,
+    ])
+
+    def fake_input(prompt=""):
+        return next(input_values)
+
+    monkeypatch.setattr(
+        "builtins.input",
+        fake_input,
+    )
+
+    validator_calls = []
+
+    def fake_validate_id(received_id):
+        validator_calls.append(received_id)
+        return validated_id
+
+    monkeypatch.setattr(
+        main,
+        "validate_id",
+        fake_validate_id,
+    )
+
+    query_calls = []
+
+    def fake_get_transaction_by_id(received_id):
+        query_calls.append(received_id)
+        return existing_transaction
+
+    monkeypatch.setattr(
+        main,
+        "get_transaction_by_id",
+        fake_get_transaction_by_id,
+    )
+
+    delete_calls = []
+
+    def fake_delete_transaction(received_id):
+        delete_calls.append(received_id)
+
+        return 0
+
+    monkeypatch.setattr(
+        main,
+        "delete_transaction",
+        fake_delete_transaction,
+    )
+
+    # Act
+    main.delete_bill()
+
+    captured = capsys.readouterr()
+
+    # Assert
+    assert validator_calls == [
+        raw_id,
+    ]
+
+    assert query_calls == [
+        validated_id,
+    ]
+
+    assert delete_calls == [
+        validated_id,
+    ]
+
+    assert "当前账单:" in captured.out
+    assert str(existing_transaction) in captured.out
+
+    assert "删除失败！" in captured.out
+    assert "删除成功！" not in captured.out
+    assert "取消删除" not in captured.out
