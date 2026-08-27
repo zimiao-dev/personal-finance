@@ -704,3 +704,355 @@ def test_delete_bill_cancels_when_not_confirmed(
 
     assert "当前账单:" in captured.out
     assert "取消删除" in captured.out
+
+
+def test_query_bill_passes_validated_date_range_to_service(
+    monkeypatch,
+):
+    # Arrange
+    query_mode = " B"
+    raw_start_date = "  2026-08-01"
+    raw_end_date = "2026-08-27  "
+
+    validated_start_date = "2026-08-01"
+    validated_end_date = "2026-08-27"
+
+    input_values = iter(
+        [
+            query_mode,
+            raw_start_date,
+            raw_end_date,
+        ]
+    )
+
+    def fake_input(prompt=""):
+        return next(input_values)
+
+    monkeypatch.setattr(
+        "builtins.input",
+        fake_input,
+    )
+
+    validated_date_values = iter(
+        [
+            validated_start_date,
+            validated_end_date,
+        ]
+    )
+
+    date_validator_calls = []
+
+    def fake_validate_date(received_date):
+        date_validator_calls.append(received_date)
+        return next(validated_date_values)
+
+    monkeypatch.setattr(
+        main,
+        "validate_date",
+        fake_validate_date,
+    )
+
+    date_range_calls = []
+
+    call_order = []
+
+    def fake_validate_date_range(
+        received_start_date,
+        received_end_date,
+    ):
+        date_range_calls.append(
+            (received_start_date, received_end_date)
+        )
+
+        call_order.append("validate_date_range")
+
+        return None
+
+    monkeypatch.setattr(
+        main,
+        "validate_date_range",
+        fake_validate_date_range,
+    )
+
+    service_calls = []
+
+    def fake_query_transactions(
+        *,
+        category,
+        start_date,
+        end_date,
+    ):
+        service_calls.append({
+            "category": category,
+            "start_date": start_date,
+            "end_date": end_date,
+        })
+
+        call_order.append("query_transactions")
+
+        return []
+
+    monkeypatch.setattr(
+        main,
+        "query_transactions",
+        fake_query_transactions,
+    )
+
+    # Act
+    main.query_bill()
+
+    # Assert
+    assert date_validator_calls == [
+        raw_start_date,
+        raw_end_date,
+    ]
+
+    assert date_range_calls == [
+        (validated_start_date, validated_end_date),
+    ]
+
+    assert service_calls == [
+        {
+            "category": None,
+            "start_date": validated_start_date,
+            "end_date": validated_end_date,
+        }
+    ]
+
+    assert call_order == [
+        "validate_date_range",
+        "query_transactions",
+    ]
+
+
+def test_query_bill_passes_category_and_date_range_to_service(
+    monkeypatch,
+):
+    # Arrange
+    query_mode = "  C  "
+
+    raw_category = "  food  "
+    raw_start_date = "  2026-08-01"
+    raw_end_date = "2026-08-27 "
+
+    validated_category = "food"
+    validated_start_date = "2026-08-01"
+    validated_end_date = "2026-08-27"
+
+    input_values = iter(
+        [
+            query_mode,
+            raw_category,
+            raw_start_date,
+            raw_end_date,
+        ]
+    )
+
+    def fake_input(prompt=""):
+        return next(input_values)
+
+    monkeypatch.setattr(
+        "builtins.input",
+        fake_input,
+    )
+
+    category_validator_calls = []
+
+    def fake_validate_category(received_category):
+        category_validator_calls.append(received_category)
+        return validated_category
+
+    monkeypatch.setattr(
+        main,
+        "validate_category",
+        fake_validate_category,
+    )
+
+    validated_date_values = iter([
+        validated_start_date,
+        validated_end_date,
+    ])
+
+    date_validator_calls = []
+
+    def fake_validate_date(received_date):
+        date_validator_calls.append(received_date)
+        return next(validated_date_values)
+
+    monkeypatch.setattr(
+        main,
+        "validate_date",
+        fake_validate_date,
+    )
+
+    date_range_calls = []
+
+    call_order = []
+
+    def fake_validate_date_range(
+        received_start_date,
+        received_end_date,
+    ):
+        date_range_calls.append(
+            (received_start_date, received_end_date)
+        )
+
+        call_order.append("validate_date_range")
+
+        return None
+
+    monkeypatch.setattr(
+        main,
+        "validate_date_range",
+        fake_validate_date_range,
+    )
+
+    service_calls = []
+
+    def fake_query_transactions(
+        *,
+        category,
+        start_date,
+        end_date,
+    ):
+        service_calls.append({
+            "category": category,
+            "start_date": start_date,
+            "end_date": end_date,
+        })
+
+        call_order.append("query_transactions")
+
+        return []
+
+    monkeypatch.setattr(
+        main,
+        "query_transactions",
+        fake_query_transactions,
+    )
+
+    # Act
+    main.query_bill()
+
+    # Assert
+    assert category_validator_calls == [
+        raw_category,
+    ]
+
+    assert date_validator_calls == [
+        raw_start_date,
+        raw_end_date,
+    ]
+
+    assert date_range_calls == [
+        (validated_start_date, validated_end_date),
+    ]
+
+    assert service_calls == [
+        {
+            "category": validated_category,
+            "start_date": validated_start_date,
+            "end_date": validated_end_date,
+        }
+    ]
+
+    assert call_order == [
+        "validate_date_range",
+        "query_transactions",
+    ]
+
+
+def test_delete_bill_displays_success_after_confirmed_delete(
+    monkeypatch,
+    capsys,
+):
+    # Arrange
+    raw_id = "  515 "
+    validated_id = 515
+    confirm_choice = " Y"
+
+    existing_transaction = Transaction(
+        id=validated_id,
+        amount=15.0,
+        type="expense",
+        category="food",
+        transaction_date="2026-08-27",
+        description="午餐",
+    )
+
+    input_values = iter(
+        [
+            raw_id,
+            confirm_choice,
+        ]
+    )
+
+    def fake_input(prompt=""):
+        return next(input_values)
+
+    monkeypatch.setattr(
+        "builtins.input",
+        fake_input,
+    )
+
+    validator_calls = []
+
+    def fake_validate_id(received_id):
+        validator_calls.append(received_id)
+        return validated_id
+
+    monkeypatch.setattr(
+        main,
+        "validate_id",
+        fake_validate_id,
+    )
+
+    query_calls = []
+
+    def fake_get_transaction_by_id(received_id):
+        query_calls.append(received_id)
+        return existing_transaction
+
+    monkeypatch.setattr(
+        main,
+        "get_transaction_by_id",
+        fake_get_transaction_by_id,
+    )
+
+    delete_calls = []
+
+    def fake_delete_transaction(received_id):
+        delete_calls.append(received_id)
+
+        return 1
+
+    monkeypatch.setattr(
+        main,
+        "delete_transaction",
+        fake_delete_transaction,
+    )
+
+    # Act
+    main.delete_bill()
+
+    captured = capsys.readouterr()
+
+    # Assert
+    assert validator_calls == [
+        raw_id,
+    ]
+
+    assert query_calls == [
+        validated_id,
+    ]
+
+    assert delete_calls == [
+        validated_id,
+    ]
+
+    assert "当前账单:" in captured.out
+
+    assert str(existing_transaction) in captured.out
+
+    assert "删除成功！" in captured.out
+    assert "取消删除" not in captured.out
