@@ -2108,3 +2108,133 @@ def test_statistics_bill_displays_error_for_invalid_statistics_mode(
 
     assert "统计结果：" not in captured.out
     assert "暂无统计数据" not in captured.out
+
+
+def test_show_menu_displays_available_options(
+    capsys,
+):
+    # Act
+    main.show_menu()
+
+    captured = capsys.readouterr()
+
+    # Assert
+    assert "Personal Finance System" in captured.out
+
+    expected_options = [
+        "1. 添加账单",
+        "2. 查看账单",
+        "3. 修改账单",
+        "4. 删除账单",
+        "5. 查询账单",
+        "6. 收支统计",
+        "0. 退出",
+    ]
+
+    for option in expected_options:
+        assert option in captured.out
+
+
+def test_query_bill_displays_returned_transactions(
+    monkeypatch,
+    capsys,
+):
+    # Arrange
+    query_mode = " A "
+    raw_category = " food "
+    validated_category = "food"
+
+    first_transaction = Transaction(
+        id=315,
+        amount=15.0,
+        type="expense",
+        category="food",
+        transaction_date="2026-08-01",
+        description="早餐",
+    )
+
+    second_transaction = Transaction(
+        id=515,
+        amount=12.0,
+        type="income",
+        category="food",
+        transaction_date="2026-08-04",
+        description="餐补",
+    )
+
+    returned_transactions = [
+        first_transaction,
+        second_transaction,
+    ]
+
+    input_values = iter([
+        query_mode,
+        raw_category,
+    ])
+
+    def fake_input(prompt=""):
+        return next(input_values)
+
+    monkeypatch.setattr(
+        "builtins.input",
+        fake_input,
+    )
+
+    validator_calls = []
+
+    def fake_validate_category(received_category):
+        validator_calls.append(received_category)
+        return validated_category
+
+    monkeypatch.setattr(
+        main,
+        "validate_category",
+        fake_validate_category,
+    )
+
+    service_calls = []
+
+    def fake_query_transactions(
+        *,
+        category,
+        start_date,
+        end_date,
+    ):
+        service_calls.append({
+            "category": category,
+            "start_date": start_date,
+            "end_date": end_date,
+        })
+        return returned_transactions
+
+    monkeypatch.setattr(
+        main,
+        "query_transactions",
+        fake_query_transactions,
+    )
+
+    # Act
+    main.query_bill()
+
+    captured = capsys.readouterr()
+
+    # Assert
+    assert validator_calls == [
+        raw_category,
+    ]
+
+    assert service_calls == [
+        {
+            "category": validated_category,
+            "start_date": None,
+            "end_date": None,
+        }
+    ]
+
+    assert "查询结果如下：" in captured.out
+
+    assert str(first_transaction) in captured.out
+    assert str(second_transaction) in captured.out
+
+    assert "没有符合条件的账单记录！" not in captured.out
+    assert "输入错误" not in captured.out
