@@ -18,7 +18,7 @@ V2 将在保留 V1 命令行界面的基础上，使用 FastAPI 和 Pydantic 增
 
 SQLAlchemy ORM 迁移不属于 `v0.2.0`，计划留给后续版本。当前项目仍定位为本地、单用户的学习与作品集项目，不承诺生产环境能力。
 
-本文后续描述的 FastAPI 路由、Pydantic Schema、`TransactionData` 和完整共享应用用例均为 `v0.2.0` 的目标设计，目前尚未实现。V1 现有Transaction Service 函数仍是 Repository 的薄转发入口，计划在迁移期间作为 CLI 兼容层暂时保留。
+本文后续描述的 FastAPI 路由、Pydantic Schema、`TransactionData` 和完整共享应用用例均为 `v0.2.0` 的目标设计，目前尚未实现。V1 现有 Transaction Service 函数仍是 Repository 的薄转发入口，计划在迁移期间作为 CLI 兼容层暂时保留。
 
 ## 2. API 基础约定
 
@@ -176,7 +176,7 @@ API 自定义错误响应使用统一字段：
 `POST /api/v1/transactions`
 
 - 请求体使用 `TransactionCreate`；
-- API 将已校验数据转换为现有 `Transaction` 业务模型；
+- API mapper 将已校验数据转换为不含 ID 的内部 TransactionData；
 - 新增成功后返回 `201 Created` 和完整的 `TransactionResponse`；
 - 请求校验失败时返回 `422 Unprocessable Entity`。
 
