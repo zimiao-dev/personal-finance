@@ -2,10 +2,25 @@
 name = "personal-finance"
 version = "0.1.0"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "alembic>=1.19.1",
+    "fastapi>=0.141.1",
+    "pydantic>=2.13.5",
+    "pydantic-settings>=2.15.0",
+    "sqlalchemy>=2.0.52",
+    "uvicorn>=0.52.4",
+]
 
 [dependency-groups]
 dev = [
+    "httpx2>=2.12.0",
     "pytest>=9.1.1",
     "pytest-cov>=7.1.0",
 ]
+
+[build-system]
+requires = ["uv_build>=0.12.6,<0.13"]
+build-backend = "uv_build"
+
+[tool.pytest.ini_options]
+addopts = "--cov=personal_finance --cov-branch --cov-report=term-missing"
