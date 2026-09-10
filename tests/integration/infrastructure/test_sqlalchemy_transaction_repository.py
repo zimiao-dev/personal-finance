@@ -1,0 +1,366 @@
+from datetime import date
+from decimal import Decimal
+
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session
+
+from personal_finance.application.dto import (
+    CreateTransactionData,
+    ReplaceTransactionData,
+)
+from personal_finance.domain.entities import Transaction
+from personal_finance.domain.enums import TransactionType
+from personal_finance.infrastructure.database.base import Base
+from personal_finance.infrastructure.database.models import TransactionModel
+from personal_finance.infrastructure.repositories.sqlalchemy_transaction_repository import (
+    SQLAlchemyTransactionRepository,
+)
+
+
+def test_sqlalchemy_transaction_repository_add_returns_domain_transaction_with_generated_id(
+    engine: Engine,
+) -> None:
+    # Arrange
+    Base.metadata.create_all(engine)
+
+    create_data = CreateTransactionData(
+        amount=Decimal("18.50"),
+        type=TransactionType.EXPENSE,
+        category="Food",
+        transaction_date=date(2026, 9, 1),
+        description="dinner",
+    )
+
+    with Session(engine) as session:
+        # Act
+        repository = SQLAlchemyTransactionRepository(session)
+        result = repository.add(create_data)
+
+        # Assert
+        assert isinstance(result, Transaction)
+        assert not isinstance(result, TransactionModel)
+
+        assert isinstance(result.id, int)
+        assert result.id > 0
+
+        assert result.amount == create_data.amount
+        assert isinstance(result.amount, Decimal)
+
+        assert result.type is create_data.type
+        assert result.category == create_data.category
+        assert result.transaction_date == create_data.transaction_date
+        assert result.description == create_data.description
+
+
+def test_sqlalchemy_transaction_repository_add_does_not_commit(
+    engine: Engine,
+) -> None:
+    # Arrange
+    Base.metadata.create_all(engine)
+
+    create_data = CreateTransactionData(
+        amount=Decimal("18.50"),
+        type=TransactionType.EXPENSE,
+        category="Food",
+        transaction_date=date(2026, 9, 1),
+        description="dinner",
+    )
+
+    with Session(engine) as write_session:
+        # Act
+        repository = SQLAlchemyTransactionRepository(write_session)
+
+        result = repository.add(create_data)
+
+        transaction_id = result.id
+
+        with Session(engine) as read_session:
+            stored_model = read_session.get(
+                TransactionModel,
+                transaction_id,
+            )
+
+            # Assert
+            assert stored_model is None
+
+        write_session.rollback()
+
+    with Session(engine) as verification_session:
+        assert verification_session.get(
+            TransactionModel,
+            transaction_id,
+        ) is None
+
+
+def test_sqlalchemy_transaction_repository_get_returns_domain_transaction(
+    engine: Engine,
+) -> None:
+    # Arrange
+    Base.metadata.create_all(engine)
+
+    stored_model = TransactionModel(
+        amount=Decimal("18.50"),
+        type="expense",
+        category="Food",
+        transaction_date=date(2026, 9, 9),
+        description="dinner",
+    )
+
+    with Session(engine) as write_session:
+        write_session.add(stored_model)
+        write_session.flush()
+
+        transaction_id = stored_model.id
+
+        write_session.commit()
+
+    assert transaction_id is not None
+
+    with Session(engine) as read_session:
+        repository = SQLAlchemyTransactionRepository(read_session)
+        result = repository.get(transaction_id)
+
+    assert result is not None
+    assert isinstance(result, Transaction)
+    assert not isinstance(result, TransactionModel)
+
+    assert result.id == transaction_id
+    assert isinstance(result.amount, Decimal)
+    assert result.amount == Decimal("18.50")
+    assert result.type is TransactionType.EXPENSE
+    assert result.category == "Food"
+    assert result.transaction_date == date(2026, 9, 9)
+    assert result.description == "dinner"
+
+
+def test_sqlalchemy_transaction_repository_get_returns_none_when_missing(
+    engine: Engine,
+) -> None:
+    # Arrange
+    Base.metadata.create_all(engine)
+
+    transaction_id = 999
+
+    # Act
+    with Session(engine) as session:
+        repository = SQLAlchemyTransactionRepository(session)
+        result = repository.get(transaction_id)
+
+    # Assert
+    assert result is None
+
+
+def test_sqlalchemy_transaction_repository_replace_updates_all_business_fields(
+    engine: Engine,
+) -> None:
+    # Arrange
+    Base.metadata.create_all(engine)
+
+    stored_model = TransactionModel(
+        amount=Decimal("18.50"),
+        type="income",
+        category="transportation",
+        transaction_date=date(2026, 9, 9),
+        description="subway",
+    )
+
+    with Session(engine) as write_session:
+        write_session.add(stored_model)
+        write_session.flush()
+
+        transaction_id = stored_model.id
+
+        write_session.commit()
+
+    assert transaction_id is not None
+
+    replace_data = ReplaceTransactionData(
+        amount=Decimal("20.50"),
+        type=TransactionType.EXPENSE,
+        category="Food",
+        transaction_date=date(2026, 9, 1),
+        description="dinner",
+    )
+
+    with Session(engine) as session:
+        # Act
+        repository = SQLAlchemyTransactionRepository(session)
+        result = repository.replace(
+            transaction_id,
+            replace_data,
+        )
+
+        session.commit()
+
+    with Session(engine) as verification_session:
+        updated_model = verification_session.get(
+            TransactionModel,
+            transaction_id,
+        )
+
+    # Assert
+    assert result is not None
+    assert isinstance(result, Transaction)
+    assert not isinstance(result, TransactionModel)
+
+    assert result.id == transaction_id
+    assert isinstance(result.amount, Decimal)
+    assert result.amount == replace_data.amount
+    assert result.type is TransactionType.EXPENSE
+    assert result.category == replace_data.category
+    assert result.transaction_date == replace_data.transaction_date
+    assert result.description == replace_data.description
+
+    assert updated_model is not None
+    assert updated_model.amount == replace_data.amount
+    assert updated_model.type == replace_data.type.value
+    assert updated_model.category == replace_data.category
+    assert updated_model.transaction_date == replace_data.transaction_date
+    assert updated_model.description == replace_data.description
+
+
+def test_sqlalchemy_transaction_repository_replace_returns_none_when_missing(
+    engine: Engine,
+) -> None:
+    # Arrange
+    Base.metadata.create_all(engine)
+    transaction_id = 999
+
+    replace_data = ReplaceTransactionData(
+        amount=Decimal("20.50"),
+        type=TransactionType.EXPENSE,
+        category="Food",
+        transaction_date=date(2026, 9, 1),
+        description="dinner",
+    )
+
+    with Session(engine) as session:
+        # Act
+        repository = SQLAlchemyTransactionRepository(session)
+        result = repository.replace(
+            transaction_id,
+            replace_data,
+        )
+
+    assert result is None
+
+
+def test_sqlalchemy_transaction_repository_replace_same_values_still_returns_transaction(
+    engine: Engine,
+) -> None:
+    # Arrange
+    Base.metadata.create_all(engine)
+
+    stored_model = TransactionModel(
+        amount=Decimal("20.50"),
+        type="expense",
+        category="Food",
+        transaction_date=date(2026, 9, 1),
+        description="dinner",
+    )
+
+    with Session(engine) as write_session:
+        write_session.add(stored_model)
+        write_session.flush()
+
+        transaction_id = stored_model.id
+
+        write_session.commit()
+
+    assert transaction_id is not None
+
+    replace_data = ReplaceTransactionData(
+        amount=Decimal("20.50"),
+        type=TransactionType.EXPENSE,
+        category="Food",
+        transaction_date=date(2026, 9, 1),
+        description="dinner",
+    )
+
+    with Session(engine) as session:
+        # Act
+        repository = SQLAlchemyTransactionRepository(session)
+        result = repository.replace(
+            transaction_id,
+            replace_data,
+        )
+
+        session.commit()
+
+    with Session(engine) as verification_session:
+        updated_model = verification_session.get(
+            TransactionModel,
+            transaction_id,
+        )
+
+    # Assert
+    assert result is not None
+    assert isinstance(result, Transaction)
+    assert not isinstance(result, TransactionModel)
+
+    assert result.id == transaction_id
+
+    assert updated_model is not None
+
+
+def test_sqlalchemy_transaction_repository_delete_returns_true_and_removes_existing_transaction(
+    engine: Engine,
+) -> None:
+    # Arrange
+    Base.metadata.create_all(engine)
+
+    stored_model = TransactionModel(
+        amount=Decimal("20.50"),
+        type="expense",
+        category="Food",
+        transaction_date=date(2026, 9, 1),
+        description="dinner",
+    )
+
+    with Session(engine) as write_session:
+        write_session.add(stored_model)
+        write_session.flush()
+
+        transaction_id = stored_model.id
+
+        write_session.commit()
+
+    assert transaction_id is not None
+
+    with Session(engine) as session:
+        # Act
+        repository = SQLAlchemyTransactionRepository(session)
+        result = repository.delete(transaction_id)
+
+        deleted_model = session.get(
+            TransactionModel,
+            transaction_id,
+        )
+
+        # Assert
+        assert result is True
+        assert deleted_model is None
+
+        session.commit()
+
+    with Session(engine) as verification_session:
+        assert verification_session.get(
+            TransactionModel,
+            transaction_id,
+        ) is None
+
+
+def test_sqlalchemy_transaction_repository_delete_returns_false_when_missing(
+    engine: Engine,
+) -> None:
+    # Arrange
+    Base.metadata.create_all(engine)
+    missing_transaction_id = 999
+
+    # Act
+    with Session(engine) as session:
+        repository = SQLAlchemyTransactionRepository(session)
+        result = repository.delete(missing_transaction_id)
+
+    # Assert
+    assert result is False
