@@ -7,9 +7,13 @@ from sqlalchemy.orm import Session
 from personal_finance.application.dto import (
     CreateTransactionData,
     ReplaceTransactionData,
+    StatisticsQuery,
     TransactionQuery,
 )
-from personal_finance.domain.entities import Transaction
+from personal_finance.domain.entities import (
+    Transaction,
+    TransactionStatistics,
+)
 from personal_finance.domain.enums import TransactionType
 from personal_finance.infrastructure.database.base import Base
 from personal_finance.infrastructure.database.models import TransactionModel
@@ -679,3 +683,174 @@ def test_sqlalchemy_transaction_repository_list_combines_filters_with_and(
     assert [item.id for item in result] == [
         first_id,
     ]
+
+
+def test_sqlalchemy_transaction_repository_summarize_returns_zero_statistics_for_empty_table(
+    engine: Engine,
+) -> None:
+    # Arrange
+    Base.metadata.create_all(engine)
+
+    query = StatisticsQuery()
+
+    # Act
+    with Session(engine) as session:
+        repository = SQLAlchemyTransactionRepository(session)
+        result = repository.summarize(query)
+
+    # Assert
+    assert isinstance(result, TransactionStatistics)
+    assert isinstance(result.total_income, Decimal)
+    assert isinstance(result.total_expense, Decimal)
+
+    assert result.total_income == Decimal("0")
+    assert result.total_expense == Decimal("0")
+    assert result.transaction_count == 0
+    assert result.balance == Decimal("0")
+
+
+def test_sqlalchemy_transaction_repository_summarize_aggregates_income_expense_and_count(
+    engine: Engine,
+) -> None:
+    # Arrange
+    Base.metadata.create_all(engine)
+
+    first_model = TransactionModel(
+        amount=Decimal("10000.0001"),
+        type="income",
+        category="salary",
+        transaction_date=date(2026, 8, 31),
+        description="",
+    )
+
+    second_model = TransactionModel(
+        amount=Decimal("16.80"),
+        type="expense",
+        category="Food",
+        transaction_date=date(2026, 9, 2),
+        description="lunch",
+    )
+
+    third_model = TransactionModel(
+        amount=Decimal("99999999999.9999"),
+        type="income",
+        category="salary",
+        transaction_date=date(2026, 9, 4),
+        description="",
+    )
+
+    fourth_model = TransactionModel(
+        amount=Decimal("20.80"),
+        type="expense",
+        category="food",
+        transaction_date=date(2026, 9, 7),
+        description="dinner",
+    )
+
+    expected_income = Decimal("10000.0001") + Decimal("99999999999.9999")
+    expected_expense = Decimal("16.80") + Decimal("20.80")
+    expected_count = 4
+
+    query = StatisticsQuery()
+
+    with Session(engine) as write_session:
+        write_session.add_all(
+            [
+                first_model,
+                second_model,
+                third_model,
+                fourth_model,
+            ]
+        )
+
+        write_session.commit()
+
+    # Act
+    with Session(engine) as session:
+        repository = SQLAlchemyTransactionRepository(session)
+        result = repository.summarize(query)
+
+    # Assert
+    assert isinstance(result, TransactionStatistics)
+    assert isinstance(result.total_income, Decimal)
+    assert isinstance(result.total_expense, Decimal)
+
+    assert result.total_income == expected_income
+    assert result.total_expense == expected_expense
+    assert result.transaction_count == expected_count
+    assert result.balance == expected_income - expected_expense
+
+
+def test_sqlalchemy_transaction_repository_summarize_uses_inclusive_date_range(
+    engine: Engine,
+) -> None:
+    # Arrange
+    Base.metadata.create_all(engine)
+
+    first_model = TransactionModel(
+        amount=Decimal("10000.0001"),
+        type="income",
+        category="salary",
+        transaction_date=date(2026, 8, 31),
+        description="",
+    )
+
+    second_model = TransactionModel(
+        amount=Decimal("16.80"),
+        type="expense",
+        category="Food",
+        transaction_date=date(2026, 9, 2),
+        description="lunch",
+    )
+
+    third_model = TransactionModel(
+        amount=Decimal("99999999999.9999"),
+        type="income",
+        category="salary",
+        transaction_date=date(2026, 9, 4),
+        description="",
+    )
+
+    fourth_model = TransactionModel(
+        amount=Decimal("20.80"),
+        type="expense",
+        category="food",
+        transaction_date=date(2026, 9, 7),
+        description="dinner",
+    )
+
+    expected_income = Decimal("99999999999.9999")
+    expected_expense = Decimal("16.80")
+    expected_count = 2
+
+    query = StatisticsQuery(
+        start_date=date(2026, 9, 2),
+        end_date=date(2026, 9, 4),
+    )
+
+    with Session(engine) as write_session:
+        write_session.add_all(
+            [
+                first_model,
+                second_model,
+                third_model,
+                fourth_model,
+            ]
+        )
+
+        write_session.commit()
+
+    # Act
+    with Session(engine) as session:
+        repository = SQLAlchemyTransactionRepository(session)
+        result = repository.summarize(query)
+
+    # Assert
+    assert isinstance(result, TransactionStatistics)
+    assert isinstance(result.total_income, Decimal)
+    assert isinstance(result.total_expense, Decimal)
+
+    assert result.total_income == expected_income
+    assert result.total_expense == expected_expense
+    assert result.transaction_count == expected_count
+    assert result.balance == expected_income - expected_expense
