@@ -1,8 +1,10 @@
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from personal_finance.application.dto import (
     CreateTransactionData,
     ReplaceTransactionData,
+    TransactionQuery,
 )
 from personal_finance.domain.entities import Transaction
 from personal_finance.infrastructure.database.models import TransactionModel
@@ -76,3 +78,35 @@ class SQLAlchemyTransactionRepository:
         self._session.flush()
 
         return True
+
+    def list(
+        self,
+        query: TransactionQuery,
+    ) -> list[Transaction]:
+        statement = select(TransactionModel)
+
+        if query.category is not None:
+            statement = statement.where(
+                TransactionModel.category == query.category,
+            )
+
+        if query.start_date is not None:
+            statement = statement.where(
+                TransactionModel.transaction_date >= query.start_date,
+            )
+
+        if query.end_date is not None:
+            statement = statement.where(
+                TransactionModel.transaction_date <= query.end_date,
+            )
+
+        statement = statement.order_by(
+            TransactionModel.id.desc(),
+        )
+
+        models = self._session.scalars(statement).all()
+
+        return [
+            transaction_model_to_domain(model)
+            for model in models
+        ]

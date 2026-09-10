@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from personal_finance.application.dto import (
     CreateTransactionData,
     ReplaceTransactionData,
+    TransactionQuery,
 )
 from personal_finance.domain.entities import Transaction
 from personal_finance.domain.enums import TransactionType
@@ -364,3 +365,317 @@ def test_sqlalchemy_transaction_repository_delete_returns_false_when_missing(
 
     # Assert
     assert result is False
+
+
+def test_sqlalchemy_transaction_repository_list_returns_empty_list_for_empty_table(
+    engine: Engine,
+) -> None:
+    # Arrange
+    Base.metadata.create_all(engine)
+    query = TransactionQuery()
+
+    # Act
+    with Session(engine) as session:
+        repository = SQLAlchemyTransactionRepository(session)
+        result = repository.list(query)
+
+    # Assert
+    assert result == []
+    assert isinstance(result, list)
+
+
+def test_sqlalchemy_transaction_repository_list_returns_transactions_by_id_descending(
+    engine: Engine,
+) -> None:
+    # Arrange
+    Base.metadata.create_all(engine)
+
+    first_model = TransactionModel(
+        amount=Decimal("20.80"),
+        type="expense",
+        category="food",
+        transaction_date=date(2026, 9, 1),
+        description="dinner",
+    )
+
+    second_model = TransactionModel(
+        amount=Decimal("16.80"),
+        type="expense",
+        category="Food",
+        transaction_date=date(2026, 9, 5),
+        description="lunch",
+    )
+
+    third_model = TransactionModel(
+        amount=Decimal("20.80"),
+        type="expense",
+        category="transportation",
+        transaction_date=date(2026, 9, 4),
+        description="subway",
+    )
+
+    query = TransactionQuery()
+
+    with Session(engine) as write_session:
+        write_session.add_all(
+            [
+                first_model,
+                second_model,
+                third_model,
+            ]
+        )
+
+        write_session.flush()
+
+        first_id = first_model.id
+        second_id = second_model.id
+        third_id = third_model.id
+
+        write_session.commit()
+
+    assert first_id is not None
+    assert second_id is not None
+    assert third_id is not None
+
+    # Act
+    with Session(engine) as session:
+        repository = SQLAlchemyTransactionRepository(session)
+        result = repository.list(query)
+
+    # Assert
+    assert all(
+        isinstance(item, Transaction)
+        for item in result
+    )
+
+    assert [item.id for item in result] == [
+        third_id,
+        second_id,
+        first_id,
+    ]
+
+
+def test_sqlalchemy_transaction_repository_list_filters_by_exact_category(
+    engine: Engine,
+) -> None:
+    # Arrange
+    Base.metadata.create_all(engine)
+
+    first_model = TransactionModel(
+        amount=Decimal("20.80"),
+        type="expense",
+        category="food",
+        transaction_date=date(2026, 9, 1),
+        description="dinner",
+    )
+
+    second_model = TransactionModel(
+        amount=Decimal("16.80"),
+        type="expense",
+        category="Food",
+        transaction_date=date(2026, 9, 5),
+        description="lunch",
+    )
+
+    third_model = TransactionModel(
+        amount=Decimal("20.80"),
+        type="expense",
+        category="transportation",
+        transaction_date=date(2026, 9, 4),
+        description="subway",
+    )
+
+    query = TransactionQuery(category="Food")
+
+    with Session(engine) as write_session:
+        write_session.add_all(
+            [
+                first_model,
+                second_model,
+                third_model,
+            ]
+        )
+
+        write_session.flush()
+
+        first_id = first_model.id
+        second_id = second_model.id
+        third_id = third_model.id
+
+        write_session.commit()
+
+    assert first_id is not None
+    assert second_id is not None
+    assert third_id is not None
+
+    # Act
+    with Session(engine) as session:
+        repository = SQLAlchemyTransactionRepository(session)
+        result = repository.list(query)
+
+    # Assert
+    assert all(
+        isinstance(item, Transaction)
+        for item in result
+    )
+
+    assert [item.id for item in result] == [
+        second_id,
+    ]
+
+
+def test_sqlalchemy_transaction_repository_list_filters_by_inclusive_date_range(
+    engine: Engine,
+) -> None:
+    # Arrange
+    Base.metadata.create_all(engine)
+
+    first_model = TransactionModel(
+        amount=Decimal("20.80"),
+        type="expense",
+        category="food",
+        transaction_date=date(2026, 9, 1),
+        description="dinner",
+    )
+
+    second_model = TransactionModel(
+        amount=Decimal("16.80"),
+        type="expense",
+        category="Food",
+        transaction_date=date(2026, 9, 5),
+        description="lunch",
+    )
+
+    third_model = TransactionModel(
+        amount=Decimal("7.80"),
+        type="expense",
+        category="transportation",
+        transaction_date=date(2026, 9, 4),
+        description="subway",
+    )
+
+    fourth_model = TransactionModel(
+        amount=Decimal("6.80"),
+        type="expense",
+        category="transportation",
+        transaction_date=date(2026, 8, 31),
+        description="subway",
+    )
+
+    query = TransactionQuery(
+        start_date=date(2026, 9, 1),
+        end_date=date(2026, 9, 4),
+    )
+
+    with Session(engine) as write_session:
+        write_session.add_all(
+            [
+                first_model,
+                second_model,
+                third_model,
+                fourth_model,
+            ]
+        )
+
+        write_session.flush()
+
+        first_id = first_model.id
+        second_id = second_model.id
+        third_id = third_model.id
+        fourth_id = fourth_model.id
+
+        write_session.commit()
+
+    assert first_id is not None
+    assert second_id is not None
+    assert third_id is not None
+    assert fourth_id is not None
+
+    # Act
+    with Session(engine) as session:
+        repository = SQLAlchemyTransactionRepository(session)
+        result = repository.list(query)
+
+    # Assert
+    assert all(
+        isinstance(item, Transaction)
+        for item in result
+    )
+
+    assert [item.id for item in result] == [
+        third_id,
+        first_id,
+    ]
+
+
+def test_sqlalchemy_transaction_repository_list_combines_filters_with_and(
+    engine: Engine,
+) -> None:
+    # Arrange
+    Base.metadata.create_all(engine)
+
+    first_model = TransactionModel(
+        amount=Decimal("20.80"),
+        type="expense",
+        category="Food",
+        transaction_date=date(2026, 9, 1),
+        description="dinner",
+    )
+
+    second_model = TransactionModel(
+        amount=Decimal("16.80"),
+        type="expense",
+        category="Food",
+        transaction_date=date(2026, 9, 5),
+        description="lunch",
+    )
+
+    third_model = TransactionModel(
+        amount=Decimal("20.80"),
+        type="expense",
+        category="food",
+        transaction_date=date(2026, 9, 4),
+        description="lunch",
+    )
+
+    query = TransactionQuery(
+        category="Food",
+        start_date=date(2026, 9, 1),
+        end_date=date(2026, 9, 4),
+    )
+
+    with Session(engine) as write_session:
+        write_session.add_all(
+            [
+                first_model,
+                second_model,
+                third_model,
+            ]
+        )
+
+        write_session.flush()
+
+        first_id = first_model.id
+        second_id = second_model.id
+        third_id = third_model.id
+
+        write_session.commit()
+
+    assert first_id is not None
+    assert second_id is not None
+    assert third_id is not None
+
+    # Act
+    with Session(engine) as session:
+        repository = SQLAlchemyTransactionRepository(session)
+        result = repository.list(query)
+
+    # Assert
+    assert all(
+        isinstance(item, Transaction)
+        for item in result
+    )
+
+    assert [item.id for item in result] == [
+        first_id,
+    ]
