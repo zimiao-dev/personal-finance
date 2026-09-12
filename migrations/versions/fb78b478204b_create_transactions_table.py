@@ -1,7 +1,7 @@
 """create transactions table
 
 Revision ID: fb78b478204b
-Revises: 
+Revises:
 Create Date: 2026-09-12 20:38:13.930813
 
 """
