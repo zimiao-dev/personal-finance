@@ -87,7 +87,8 @@ def test_alembic_upgrade_head_creates_schema_in_empty_mysql_database(
         assert "transactions" in table_names
         assert "alembic_version" in table_names
 
-        drop_mysql_test_tables(engine)
-
     finally:
-        engine.dispose()
+        try:
+            drop_mysql_test_tables(engine)
+        finally:
+            engine.dispose()
