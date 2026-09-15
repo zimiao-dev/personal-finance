@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import pytest
+
 from alembic import command
 from alembic.config import Config
 from sqlalchemy import create_engine, inspect
@@ -7,8 +9,11 @@ from sqlalchemy import create_engine, inspect
 
 def test_alembic_upgrade_head_creates_transactions_table_in_empty_database(
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     # Arrange
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+
     database_path = tmp_path / "migration_test.db"
     temporary_database_url = f"sqlite:///{database_path}"
 

@@ -1,3 +1,4 @@
+import os
 from logging.config import fileConfig
 
 from alembic import context
@@ -29,6 +30,21 @@ target_metadata = Base.metadata
 # ... etc.
 
 
+def get_database_url() -> str:
+    database_url = (
+        os.getenv("DATABASE_URL")
+        or config.get_main_option("sqlalchemy.url")
+    )
+
+    if not database_url:
+        raise RuntimeError(
+            "Database URL is not configured. "
+            "Set DATABASE_URL or sqlalchemy.url in alembic.ini."
+        )
+
+    return database_url
+
+
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode.
 
@@ -42,7 +58,7 @@ def run_migrations_offline() -> None:
 
     """
 
-    url = config.get_main_option("sqlalchemy.url")
+    url = get_database_url()
 
     context.configure(
         url=url,
@@ -62,7 +78,7 @@ def run_migrations_online() -> None:
     and associate a connection with the context.
 
     """
-    database_url = config.get_main_option("sqlalchemy.url")
+    database_url = get_database_url()
     engine = create_engine_from_url(database_url)
 
     try:
